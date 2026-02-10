@@ -1503,7 +1503,7 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
             false
         ind = condIndent(g, doPars)
 
-      gsub(g, n[0])
+      gsub(g, n[0], flags * {sfNoIndent, sfLongIndent})
 
       var i = 1
       while i < n.len and n[i].kind notin postExprBlocks:
@@ -1522,8 +1522,27 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
         optNL(g)
         put(g, tkParRi, $tkParRi)
     elif n.len >= 1:
-      gsub(g, n[0], flags = (flags * {sfStackDot}) + {sfStackDotInCall})
+      let
+        nameFlags =
+          (flags * {sfStackDot, sfNoIndent, sfLongIndent}) + {sfStackDotInCall}
+        stackDot =
+          if n[0].kind == nkDotExpr:
+            let dot = n[0]
+            sfStackDot in flags or (
+              g.overflows(lsub(g, dot[0]) + lsub(g, dot[1]) + 1) and
+              isStackedCall(dot[0], true)
+            )
+          else:
+            false
+
+      gsub(g, n[0], nameFlags)
+
+      # The way stacked calls work, the `.name` part will be indented when on a
+      # new line by the nkDotExpr handler - when that happens, we must also
+      # indent the list of parameters
+      let ind = g.condIndent(stackDot, flagIndent(flags))
       glist(g, n, tkParLe, start = 1, flags = {lfLongSepAtEnd})
+      g.dedent(ind)
     else:
       put(g, tkParLe, "(")
       put(g, tkParRi, ")")
@@ -1647,12 +1666,13 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
           )
         stackNL = stackDot and sfStackDotInCall in flags
         subFlags =
-          {sfParDo} + (
+          flags * {sfNoIndent, sfLongIndent} + {sfParDo} + (
             if stackDot:
               {sfStackDot}
             else:
               {}
           )
+        wid = flagIndent(flags)
 
       gsub(g, n[0], flags = subFlags)
 
@@ -1664,8 +1684,12 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
         gmids(g, n)
       elif stackNL:
         optNL(g)
+
+      # Careful, this indent must be matched for the parameter list in nkCall!
+      g.optIndent(wid)
       put(g, tkDot, ".")
-      gsub(g, n[1])
+      gsub(g, n[1], {sfNoIndent})
+      g.dedent(wid)
   of nkBind:
     putWithSpace(g, tkBind, "bind")
     gsub(g, n[0])
