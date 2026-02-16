@@ -2,6 +2,13 @@
 
 # 0.7.0
 
+0.7.0 brings several formatting changes to the table meaning that projects using
+the earlier version wills see their code reformatted slightly - hopefully for the
+better.
+
+If you are checking formatting in CI, make sure to lock it down to the version
+you're using locally and upgrade the two together!
+
 Formatting updates:
 
 * Indent chained/dotted calls that start on a new line to make expression
@@ -32,9 +39,9 @@ Formatting updates:
     ...
   )
   ```
-* Put triple-string literals on same line if it fits (f12c27c)
-* Make `[]` operator simple (0145a67)
-* Preserve block comments followed by single-line comments (bca5b70)
+* Put triple-string literals on same line if it fits
+* Make `[]` operator simple
+* Preserve block comments followed by single-line comments
 
 New features:
 
