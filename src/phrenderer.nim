@@ -19,7 +19,7 @@
 {.used.}
 
 import "$nim"/compiler/[idents], std/[strutils, sequtils]
-import "."/[phlexer, phoptions, phast, phmsgs, phlineinfos]
+import "."/[phlexer, phoptions, phast, phmsgs, phlineinfos,phastyaml]
 when defined(nimPreviewSlimSystem):
   import std/[syncio, assertions, formatfloat]
 
@@ -522,6 +522,9 @@ proc atom(g: TOutput, n: PNode): string =
 
 proc commaSep(n: PNode): TokType =
   tkComma
+
+proc semiSep(n: PNode): TokType {.noSideEffect, gcsafe.} =
+  tkSemiColon
 
 proc identDefsSep(n: PNode): TokType =
   # nkIdentDefs must be rendered using semi-colon if it doesn't have a type or
@@ -1168,6 +1171,10 @@ proc gcase(g: var TOutput, n: PNode) =
     return
 
   putWithSpace(g, tkCase, "case")
+  #echo treeToYaml(nil, n)
+  if n.len == 1:
+    gcond(g, n[0].skipTrivialStmtList())
+    return
 
   # If each branch is simple and fits on a line, we render the whole case using
   # trivial mode with no newline before branch body
@@ -2203,7 +2210,7 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
       g,
       n,
       tkBracketLe,
-      separator = identDefsSep,
+      separator = semiSep,
       indentNL = flagIndent(flags),
       flags = {lfLongSepAtEnd},
     )
@@ -2226,7 +2233,7 @@ proc gsub(g: var TOutput, n: PNode, flags: SubFlags, extra: int) =
         g,
         n,
         tkParLe,
-        separator = identDefsSep,
+        separator = semiSep,
         extra = retExtra,
         start = 1,
         indentNL = flagIndent(flags),
